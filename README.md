@@ -24,8 +24,13 @@ A short overview of the provided code files.
 * ```get_files.py``` contains two functions to return specific subdirectories or files in the directory.
 
 ### Data
-The two setup files used to generate the sampled datasets of three and five clusters for the Distribution-Based Urban Model are provided. These can be read using the `GMM_data.py` script.
+The two setup files used to generate sampled datasets of three and five clusters for the Distribution-Based Urban Model are provided. These can be read using the `GMM_data.py` script to then create new data files.
+All other data used in this thesis is either publically available at the cited sources or was only shared for these research purposes and will not be published here.
 
 ## Abstract
 
+Microsimulation models form a central role in examining the socio-economic impacts of new policies on a population. As a base for the microsimulations, extensive and detailed datasets are required to accurately model individual units. In this thesis, a novel application of optimization methods to assign households to dwellings with precise geo-coordinates, while preserving the statistical properties of the area, is presented. This aims to provide an assignment between a set of households and a set of dwellings in a specific geographic area. Three methods are developed: an Integer Linear Program, an optimization problem formulation based on Maximum Weight Bipartite Matchings, and a Simulated Annealing heuristic approach. Furthermore, input datasets based on the German 2011 Census are evaluated and examined, and a novel method for creating correlated datasets using Gaussian Mixture Models is presented. The results of a comparison in accuracy and runtime on both datasets indicate that the optimization formulations have a runtime cubic in the number of dwellings while the Simulated Annealing approach is quadratic in the input. The ILP and matching formulations are both capable of finding feasible solutions quickly and reach a small MIP Gap (less than one percent) within the first ten minutes of the optimization. All three approaches are suitable for solving the presented problem, although future work on large datasets, possibly based on the German Census 2022, is required to evaluate the robustness of these findings.
+
 ## License
+
+This work is licensed under the GNU General Public License v3.0.
