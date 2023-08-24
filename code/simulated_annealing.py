@@ -13,13 +13,11 @@ import numpy as np
 import json
 import time
 
-# import code for reading in data
-from get_input import input_from_csv_ILP, get_input
-
 
 class Simulated_Annealing():
-    def __init__(self, data_dict: dict,
-                 lambdas_dict: dict = {"hh": 0.3, "per": 0.3, "c": 0.3},
+    def __init__(self,
+                 variables: dict,
+                 lambdas: dict = {"hh": 0.3, "per": 0.3, "c": 0.3},
                  niters: int = 100,
                  starting_temp: int = 100,
                  cooling_schedule: str = "log",
@@ -31,11 +29,9 @@ class Simulated_Annealing():
 
         Parameters
         ----------
-        data_dict : dict
-            input dictionary of the format
-            {"d" : os.path (to .csv file of data of dwellings),
-             "h": os.path (to .csv file of data of households)}
-        lambdas_dict : dict, optional
+        variables : dict
+            provides all relevant data for the optimization. See README for more details.
+        lambdas : dict, optional
             penalty weights. The default is {"hh":0.3, "per":0.3, "c":0.3}.
         niters : int, optional
             number of iterations at each temperature before reannealing.
@@ -74,7 +70,7 @@ class Simulated_Annealing():
 
         self.niters = niters  # number of iterations per temperature T
 
-        self.lambdas_dict = lambdas_dict  # weights for objective function
+        self.lambdas = lambdas  # weights for objective function
 
         self.T0 = starting_temp  # starting temperature
         self.T = starting_temp  # running temperature
@@ -84,25 +80,24 @@ class Simulated_Annealing():
         self.cooling_schedule = cooling_schedule.lower()
         self.c = self.T0 * np.log(2)
 
-        # get inputs
-        variable_dict = input_from_csv_ILP(data_dict)
-
         # get variables from dict
-        self.D = variable_dict["D"]
-        self.H = variable_dict["H"]
-        self.K = variable_dict["K"]
-        self.p_h = variable_dict["p_h"]
-        self.c_d = variable_dict["c_d"]
-        self.s = variable_dict["s"]
-        self.B_hhd = variable_dict["B_hhd"]
-        self.B_per = variable_dict["B_per"]
+        self.len_D = variables["D"]
+        self.len_H = variables["H"]
+        self.len_K = variables["K"]
+        self.p_h = variables["p_h"]
+        self.c_d = variables["c_d"]
+        self.s = variables["s"]
+        self.B_hh = variables["B_hh"]
+        self.B_per = variables["B_per"]
+
+        self.H = [h for h in range(self.len_H)]
+        self.D = [d for d in range(self.len_D)]
+        self.K = [k for k in range(self.len_K)]
 
         # add nullspace (represented by -1) to H and D
         self.full_D = self.D + [-1]
         self.full_H = self.H + [-1]
 
-        self.len_H = len(self.H)
-        self.len_D = len(self.D)
         self.num_vars = self.len_H * self.len_D
 
         self.p_h_list = np.array([self.p_h[h] for h in self.H])
@@ -335,15 +330,15 @@ class Simulated_Annealing():
 
         for k in self.K:
             s_k = self.s[k]
-            temp_hh = x[:, s_k].sum() - self.B_hhd[k]
+            temp_hh = x[:, s_k].sum() - self.B_hh[k]
             temp_per = (self.p_h_list @ x[:, s_k]).sum() - self.B_per[k]
 
-            obj_val -= self.lambdas_dict["hh"] * max(0, temp_hh)
-            obj_val -= self.lambdas_dict["per"] * max(0, temp_per)
+            obj_val -= self.lambdas["hh"] * max(0, temp_hh)
+            obj_val -= self.lambdas["per"] * max(0, temp_per)
 
         for d in self.D:
             temp_c = self.p_h_list @ x[:, d] - self.c_d[d]
-            obj_val -= self.lambdas_dict["c"] * max(0, temp_c)
+            obj_val -= self.lambdas["c"] * max(0, temp_c)
 
         return obj_val
 
@@ -388,15 +383,15 @@ class Simulated_Annealing():
             self.T = self.T0 * self.alpha ** (self.t_n + 1)
         # logarithmic
         elif ((self.cooling_schedule == "log") or
-                  (self.cooling_schedule == "logarithmic")):
+              (self.cooling_schedule == "logarithmic")):
             self.T = self.c / np.log((self.t_n + 1))
         # multiplicative
         elif ((self.cooling_schedule == "mult") or
-                  (self.cooling_schedule == "multiplicative")):
+              (self.cooling_schedule == "multiplicative")):
             self.T = self.T0 / (1 + self.alpha * (self.t_n + 1))
         # additive
         elif ((self.cooling_schedule == "add") or
-                  (self.cooling_schedule == "additive")):
+              (self.cooling_schedule == "additive")):
             self.T -= self.alpha
         else:
             raise Exception("Invalid cooling schedule passed.")
@@ -445,7 +440,7 @@ class Simulated_Annealing():
         if len(self.func_vals) >= self.acceptance_iters:
             func_change = (abs(self.func_vals[-1] - self.func_vals[0]) /
                            (self.acceptance_iters * max(1,
-                                            abs(self.func_vals[-1]))))
+                                                        abs(self.func_vals[-1]))))
             # if average relative change < acceptance tolerance
             if func_change < self.acceptance_tol:
                 print("Stopping Criterion: Acceptance tolerance reached")
@@ -588,7 +583,6 @@ class Simulated_Annealing():
             if self.stopping_criterion():
                 continue_while = False
 
-        self.print_optimum()
         print("Ending temperature:", self.T)
 
         return [self.best_edges, self.best_value, self.stats,
@@ -596,17 +590,18 @@ class Simulated_Annealing():
 
 
 if __name__ == "__main__":
-    """ Inputs """
-    # all inputs are defined here
+    # example function call
 
-    # DATASET
-    # these inputs define the dataset to use for the optimization
-    number_of_dwellings = 10
-    number_of_households = 10
-    number_of_grid_cells = None
-
-    sub_dir = "data"
-    save_best_edges = True  # save the optimal edges
+    variables = {
+        "H": 3,
+        "D": 4,
+        "K": 1,
+        "p_h": np.array([4, 1, 2]),
+        "c_d": np.array([6, 6, 4, 2]),
+        "s": np.array([[1, 1, 1, 1]]),
+        "B_hh": [4],
+        "B_per": [18],
+    }
 
     # OPTIMIZATION
     # these inputs define additional parameters and options of the optimization
@@ -620,29 +615,11 @@ if __name__ == "__main__":
     # set a different random seed for each repetition
     seeds = [random.randint(0, 100) for _ in range(repetitions)]
 
-    # get input
-    data_dict, model_path, save_str, _, _ = get_input(
-        number_of_cells=number_of_grid_cells,
-        num_households=number_of_households,
-        num_dwellings=number_of_dwellings,
-        sub_dir=sub_dir)
-
-    best_val_by_temp = {}
     for rep in range(repetitions):
         random.seed(seeds[rep])
-        anneal = Simulated_Annealing(data_dict,
+        anneal = Simulated_Annealing(variables,
                                      starting_temp=starting_temperature,
                                      niters=number_of_iterations,
                                      cooling_schedule=cooling_schedule,
                                      cooling_param=cooling_parameter)
         data = anneal.optimize()
-
-        # save best edges found in this repetition
-        if save_best_edges:
-            save_path_temp = save_str + "_" +\
-                str(cooling_schedule).replace(".", "") + "_" + \
-                str(cooling_parameter).replace(".", ",") + "_" +\
-                str(starting_temperature) + "_" + \
-                str(rep) + ".json"
-            with open(save_path_temp, "w+") as f:
-                json.dump(data, f)

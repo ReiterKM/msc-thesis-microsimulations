@@ -12,16 +12,13 @@ import gurobipy as gp
 import pandas as pd
 from tqdm import tqdm  # display progress
 
-# import code for reading in data
-from get_input import get_input, input_from_csv_matching
 
-
-def optimize(data_dict: dict,
+def optimize(variables: dict,
              save_path: str = None,
              model_path: str = None,
              verbose: bool = True,
              return_opt: bool = False,
-             lambdas_dict: dict = {"hhd": 0.5, "per": 0.5, "cap": 0.5},
+             lambdas: dict = {"hhd": 0.5, "per": 0.5, "cap": 0.5},
              log_file_path: str = None,
              params: dict = None):
     """
@@ -31,9 +28,8 @@ def optimize(data_dict: dict,
 
     Parameters
     ----------
-    data_dict : dict
-        of the format {"d" : os.path (to .csv file of data of dwellings),
-        "h": os.path (to .csv file of data of households)}
+    variables : dict
+        provides all relevant data for the optimization. See README for more details.
     save_path : str, optional
         path to save the optimal solution x. If included, this is where we save
         the optimal x. The default is None.
@@ -47,7 +43,7 @@ def optimize(data_dict: dict,
     return_opt : bool, optional
         True if we want to return the optimal solution as a numpy matrix.
         The default is False.
-    lambdas_dict : dict, optional
+    lambdas : dict, optional
         A dictionary of values to be used as the lambdas, i.e.,
         the penalty weight parameters. The default is None.
     log_file_path : str, optional
@@ -70,21 +66,22 @@ def optimize(data_dict: dict,
     # ------- Load Inputs -------
     verboseprint("\nStep 1: load inputs")
 
-    variable_dict = input_from_csv_matching(data_dict)
-
     # get variables from dict
-    D = variable_dict["D"]
-    H = variable_dict["H"]
-    K = variable_dict["K"]
-    p_h = variable_dict["p_h"]
-    c_d = variable_dict["c_d"]
-    s = variable_dict["s"]
-    B_hh = variable_dict["B_hh"]
-    B_per = variable_dict["B_per"]
+    len_D = variables["D"]
+    len_H = variables["H"]
+    len_K = variables["K"]
+    p_h = variables["p_h"]
+    c_d = variables["c_d"]
+    s = variables["s"]
+    B_hh = variables["B_hh"]
+    B_per = variables["B_per"]
 
-    len_H = len(H)
-    len_D = len(D)
-    len_K = len(K)
+    D = range(len_D)
+    H = range(len_H)
+    K = range(len_K)
+    # len_H = len(H)
+    # len_D = len(D)
+    # len_K = len(K)
 
     verboseprint("Number of Dwellings:", len_D)
     verboseprint("Number of Households:", len_H)
@@ -98,9 +95,9 @@ def optimize(data_dict: dict,
     verboseprint("\nStep 3: define penalty weights lambda")
 
     # get penalty weights from input
-    lambda_hhd = lambdas_dict["hhd"]
-    lambda_per = lambdas_dict["per"]
-    lambda_cap = lambdas_dict["cap"]
+    lambda_hhd = lambdas["hhd"]
+    lambda_per = lambdas["per"]
+    lambda_cap = lambdas["cap"]
 
     # ------- Defining the optimization variable -------
     verboseprint("\nStep 4: define optimization variable x")
@@ -249,42 +246,32 @@ def optimize(data_dict: dict,
 
 
 if __name__ == "__main__":
-    """ Inputs """
-    # all inputs are defined here
+ # example function call
 
-    # DATASET
-    # these inputs define the dataset to use for the optimization
-    number_of_dwellings = 10
-    number_of_households = 10
-    number_of_grid_cells = None
-
-    sub_dir = None  # specific subdirector where the data is located
-    sub_str = ""  # specific substring / name of the data
+    variables = {
+        "H": 3,
+        "D": 4,
+        "K": 1,
+        "p_h": np.array([4, 1, 2]),
+        "c_d": np.array([6, 6, 4, 2]),
+        "s": np.array([[1, 1, 1, 1]]),
+        "B_hh": [4],
+        "B_per": [18],
+    }
+    lambdas = {"hhd": 0.5, "per": 0.5, "cap": 0.5}
 
     # OPTIMIZATION
     # these inputs define additional parameters and options of the optimization
-    log_file = True  # produce a log file
+    log_file = False  # produce a log file
     verbose = True  # verbose optimization
     params = {"MIPGap": 0.0005}  # dictionary of parameters to pass to Gurobi
     # in the form: {parameter : value}, ex: {"MIPGap" : 0.0005}
 
-    lambdas_dict = {"hhd": 0.5, "per": 0.5, "cap": 0.5}  # penalty parameters
-
-    # get inputs
-    data_dict, model_path, save_str, solution_path, log_file_path = get_input(
-        number_of_cells=number_of_grid_cells,
-        num_households=number_of_households,
-        num_dwellings=number_of_dwellings,
-        substr=sub_str,
-        sub_dir=sub_dir,
-        log_file=log_file)
-
     # run optimization
-    optimize(data_dict,
-             save_path=solution_path,
-             model_path=model_path,
+    optimize(variables,
+             save_path="example_solution.csv",
+             model_path="example_model.mps",
              verbose=verbose,
              return_opt=False,
-             lambdas_dict=lambdas_dict,
-             log_file_path=log_file_path,
+             lambdas=lambdas,
              params=params)
