@@ -13,11 +13,8 @@ import gurobipy as gp
 import pandas as pd
 from tqdm import tqdm  # show progress
 
-# import code for reading in data
-from get_input import get_input, input_from_csv_ILP
 
-
-def optimize(data_dict: dict,
+def optimize(variables: dict,
              save_path: str = None,
              return_opt: bool = False,
              model_path: str = None,
@@ -31,9 +28,8 @@ def optimize(data_dict: dict,
 
     Parameters
     ----------
-    data_dict : dict
-        of the format {"d" : os.path (to .csv file of data of dwellings),
-            "h": os.path (to .csv file of data of households)}
+    variables : dict
+        provides all relevant data for the optimization. See README for more details.
     save_path : str, optional
         path to save the optimal solution x. If included, this is where we save
         the optimal x. The default is None.
@@ -61,75 +57,25 @@ def optimize(data_dict: dict,
         dataframe of size H x D with x values, if return_opt = True
 
     """
-
-    """
-    This function builds and optimizes a "standard" MIP model based on our
-    problem, using the given input in data_dict.
-
-    Parameters
-    ----------
-    data_dict: dictionary
-        of the format {"d" : os.path (to .csv file of data of dwellings),
-        "h": os.path (to .csv file of data of households)}
-    save_path : string, optional
-        path to save the optimal solution x. If included, this is where we save
-        the optimal x.
-        The default is None.
-    return_opt : bool, optional
-        True if we want to return the optimal solution as a numpy matrix
-        The default is False
-    model_path: string, optional
-        path to save the complete model. If included,
-        this is where the model file will be saved.
-        The default is None.
-    vebose : bool, optional
-        True if we want to show the Gurobi output. False otherwise.
-        The default is True.
-    max_time: float, optional
-        if included, a time limit is set on the gurobi model ("TimeLimit")
-        Should be given in seconds?.
-        The default is None
-    mip_gap: float, optional
-        if included, the MIPGap is set to this value on the gurobi sovler
-        The default value is None
-    log_file : string, optional
-        if true, a log file of the run is saved to the same location
-        as the code, named as the string.
-        The default is None.
-    log_runtime : bool, optional
-        if True, the runtime is logged and returned. The default is False.
-    extended : bool, optional
-        if True, a different function for loading the inputs is used.
-        Denotes if we are using the extended dataset or not.
-        The default is False.
-    timer : str, optional
-        option for timer (from the 'time' module). The default is None.
-
-    Returns
-    -------
-    None.
-
-    """
-
     # define a function to only print if verbose = True
     verboseprint = print if verbose else lambda *a, **k: None
 
     # ------- Load Inputs -------
     verboseprint("\nStep 1: load inputs")
-    variable_dict = input_from_csv_ILP(data_dict)
 
     # get variables from dict
-    D = variable_dict["D"]
-    H = variable_dict["H"]
-    K = variable_dict["K"]
-    p_h = variable_dict["p_h"]
-    c_d = variable_dict["c_d"]
-    s = variable_dict["s"]
-    B_hh = variable_dict["B_hhd"]
-    B_per = variable_dict["B_per"]
+    len_D = variables["D"]
+    len_H = variables["H"]
+    len_K = variables["K"]
+    p_h = variables["p_h"]
+    c_d = variables["c_d"]
+    s = variables["s"]
+    B_hh = variables["B_hh"]
+    B_per = variables["B_per"]
 
-    len_H = len(H)
-    len_D = len(D)
+    H = range(len_H)
+    D = range(len_D)
+    K = range(len_K)
 
     verboseprint("Number of Dwellings:", len_D)
     verboseprint("Number of Households:", len_H)
@@ -209,7 +155,9 @@ def optimize(data_dict: dict,
     model.optimize()
 
     # save the solution, if desired
-    solution_matrix = [[int(round(x[h, d].x[0], 0)) for h in H] for d in D]
+    values_of_x = x.X
+    solution_matrix = [[int(round(values_of_x[h, d], 0))
+                        for h in H] for d in D]
     solution_df = pd.DataFrame(solution_matrix, columns=H, index=D)
 
     if save_path:
@@ -234,38 +182,30 @@ def optimize(data_dict: dict,
 
 
 if __name__ == "__main__":
-    """ Inputs """
-    # all inputs are defined here
+ # example function call
 
-    # DATASET
-    # these inputs define the dataset to use for the optimization
-    number_of_dwellings = 10
-    number_of_households = 10
-    number_of_grid_cells = None
-
-    sub_dir = None  # specific subdirector where the data is located
-    sub_str = ""  # specific substring / name of the data
+    variables = {
+        "H": 3,
+        "D": 4,
+        "K": 1,
+        "p_h": np.array([4, 1, 2]),
+        "c_d": np.array([6, 6, 4, 2]),
+        "s": np.array([[1, 1, 1, 1]]),
+        "B_hh": [4],
+        "B_per": [18],
+    }
 
     # OPTIMIZATION
     # these inputs define additional parameters and options of the optimization
-    log_file = True  # produce a log file
+    log_file = False  # produce a log file
     verbose = True  # verbose optimization
     params = {"MIPGap": 0.0005}  # dictionary of parameters to pass to Gurobi
     # in the form: {parameter : value}, ex: {"MIPGap" : 0.0005}
-    # get inputs
-    data_dict, model_path, save_str, solution_path, log_file_path = get_input(
-        number_of_cells=number_of_grid_cells,
-        num_households=number_of_households,
-        num_dwellings=number_of_dwellings,
-        substr=sub_str,
-        sub_dir=sub_dir,
-        log_file=log_file)
 
     # run optimization
-    optimize(data_dict,
-             save_path=solution_path,
-             model_path=model_path,
+    optimize(variables,
+             save_path="example_solution.csv",
+             model_path="example_model.mps",
              verbose=verbose,
              return_opt=False,
-             log_file_path=log_file_path,
              params=params)

@@ -460,6 +460,7 @@ def read_input(sub_dir: str, comment: str):
 
 
 if __name__ == "__main__":
+    # example function call
     """
     Parameters
     ----------

@@ -12,7 +12,7 @@ The optimization problems are built programmed using the solver [Gurobi](https:/
 
 ## Structure and Files
 ### Code
-A short overview of the provided code files.
+A short overview of the provided code files. The provided README describes the required inputs and their formats.
 
 * ```ilp_formulation.py``` runs the optimization in ILP formulation using the Gurobi Solver. See Equation 6.9 in Section 6.2 Integer Linear Programming.
 * ```matching_formulation.py``` runs the optimization in form of a Maximum Matching using the Gurobi Solver. See Equation 6.18 in Section 6.3 Matching Formulation.

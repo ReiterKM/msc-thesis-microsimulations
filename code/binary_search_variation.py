@@ -36,14 +36,12 @@ verbose_optimization : bool, optional
 """
 
 # imports
-from input_from_csv import input_from_csv_extended_third
-from get_input import get_input
 import gurobipy as gp
 
 
 class lambda_midpoints:
     def __init__(self,
-                 data_dict: dict,
+                 variables: dict,
                  path_to_model: str,
                  indices: list = ["hhd", "per", "cap"],
                  precision: int = 2,
@@ -53,7 +51,7 @@ class lambda_midpoints:
 
         # initialize the class
 
-        self.data_dict = data_dict
+        self.variables = variables
         self.path_to_model = path_to_model
 
         # check if starting interval is valid
@@ -106,13 +104,15 @@ class lambda_midpoints:
         None.
 
         """
-        # read input
-        variable_dict = input_from_csv_extended_third(self.data_dict)
 
         # get variables from variable dict
-        D = variable_dict["D"]
-        H = variable_dict["H"]
-        K = variable_dict["K"]
+        len_D = self.variables["D"]
+        len_H = self.variables["H"]
+        len_K = self.variables["K"]
+
+        D = range(len_D)
+        H = range(len_H)
+        K = range(len_K)
 
         # read model from file
         model = gp.read(self.path_to_model)
@@ -330,32 +330,16 @@ class lambda_midpoints:
 
 
 if __name__ == "__main__":
-    # load necessary data
-    extended_dataset = False
-    use_synth_data = True
-    use_small_data = True
-    sub_dir = "data1/synthetic_data"
-    substr = "three_clusters_sqm"
-
-    # change only this number:
-    number_of_cells = None
-    num_households = None
-    num_dwellings = 10
-
-    # get all inputs
-    data_dict, path_to_model, save_str, path_to_save = get_input(
-        use_extended_data=extended_dataset,
-        use_synth_data=use_synth_data,
-        sub_dir=sub_dir, substr=substr,
-        use_small_data=use_small_data,
-        number_of_cells=number_of_cells,
-        num_households=num_households,
-        num_dwellings=num_dwellings,
-        model_comment="three_clusters_sqm",
-        get_model=True)
+    # example function call
+    variables = {
+        "H": 3,
+        "D": 4,
+        "K": 1,
+    }
 
     # Initialize class
-    lambda_mid = lambda_midpoints(data_dict, path_to_model,
+    lambda_mid = lambda_midpoints(variables=variables,
+                                  path_to_model="example_model.mps",
                                   indices=["hh", "per", "c"])
     # run search
     lambda_mid.run()
